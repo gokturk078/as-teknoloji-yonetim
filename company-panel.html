@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Şirket Borç Takip Paneli | AS Teknolojik</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="company-panel.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Yükleniyor...</p>
+    </div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-chart-line logo-icon"></i>
+                <h2>AS Finans</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Genel Bakış</span>
+                </a>
+                <a href="company-panel.html" class="nav-item active">
+                    <i class="fas fa-building"></i>
+                    <span>Şirket Borçları</span>
+                </a>
+                <a href="index.html#tableSection" class="nav-item">
+                    <i class="fas fa-table"></i>
+                    <span>Tüm Kayıtlar</span>
+                </a>
+                <a href="index.html#view-reports" class="nav-item">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Raporlar</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=random" alt="Admin">
+                    <div>
+                        <p class="user-name">Yönetici</p>
+                        <p class="user-role">AS Teknolojik</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h1>Şirket Borç Takip Paneli</h1>
+                    <p class="text-secondary">Şirket bazlı borç ve ödeme yönetimi</p>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-secondary" onclick="refreshCompanies()">
+                        <i class="fas fa-sync-alt"></i> <span class="d-none-mobile">Yenile</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="openCompanyModal()">
+                        <i class="fas fa-plus"></i> <span class="d-none-mobile">Yeni Şirket</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Stats Summary -->
+            <section class="stats-grid company-stats">
+                <div class="stat-card">
+                    <div class="icon-box bg-blue-light text-blue">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <p class="stat-label">Toplam Şirket</p>
+                        <h3 class="stat-value" id="totalCompanies">0</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-box bg-red-light text-red">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <p class="stat-label">Toplam Borç</p>
+                        <h3 class="stat-value" id="totalDebtAmount">₺0</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-box bg-green-light text-green">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <p class="stat-label">Toplam Ödenen</p>
+                        <h3 class="stat-value" id="totalPaidAmount">₺0</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-box bg-orange-light text-orange">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <p class="stat-label">Kalan Borç</p>
+                        <h3 class="stat-value" id="totalRemainingAmount">₺0</h3>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filters -->
+            <section class="filters-section">
+                <div class="filter-group">
+                    <input type="text" id="searchCompany" class="form-control" placeholder="Şirket ara...">
+                </div>
+                <div class="filter-group">
+                    <select id="statusFilter" class="form-control">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="has_debt">Borçlu</option>
+                        <option value="paid">Tamamı Ödenmiş</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="sortBy" class="form-control">
+                        <option value="name">Şirket Adı</option>
+                        <option value="remaining_debt">Kalan Borç</option>
+                        <option value="last_transaction">Son İşlem</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Company Cards Grid -->
+            <section class="company-grid" id="companyGrid">
+                <!-- Cards will be rendered here -->
+            </section>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-building"></i>
+                <h3>Henüz şirket eklenmemiş</h3>
+                <p>Yeni bir şirket ekleyerek başlayın</p>
+                <button class="btn btn-primary" onclick="openCompanyModal()">
+                    <i class="fas fa-plus"></i> Şirket Ekle
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Company Modal -->
+    <div id="companyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="companyModalTitle">Yeni Şirket Ekle</h2>
+                <button class="close-btn" onclick="closeCompanyModal()">&times;</button>
+            </div>
+            <form id="companyForm" onsubmit="return handleCompanySubmit(event)">
+                <input type="hidden" id="companyId">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="companyName">Şirket Adı *</label>
+                        <input type="text" id="companyName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactPerson">İletişim Kişisi</label>
+                        <input type="text" id="contactPerson">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Telefon</label>
+                        <input type="text" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">E-posta</label>
+                        <input type="email" id="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="iban">IBAN</label>
+                        <input type="text" id="iban">
+                    </div>
+                    <div class="form-group">
+                        <label for="initialDebt">Başlangıç Borcu</label>
+                        <input type="number" id="initialDebt" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyCurrency">Para Birimi</label>
+                        <select id="companyCurrency">
+                            <option value="TL">TL</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="STG">STG</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="notes">Notlar</label>
+                        <textarea id="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCompanyModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="paymentModalTitle">Ödeme/Borç Ekle</h2>
+                <button class="close-btn" onclick="closePaymentModal()">&times;</button>
+            </div>
+            <form id="paymentForm" onsubmit="return handlePaymentSubmit(event)">
+                <input type="hidden" id="paymentCompanyId">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label id="paymentCompanyLabel">Şirket: -</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentType">İşlem Türü *</label>
+                        <select id="paymentType" required>
+                            <option value="ÖDEME">Ödeme</option>
+                            <option value="BORÇ">Yeni Borç</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentAmount">Miktar *</label>
+                        <input type="number" id="paymentAmount" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentDate">Tarih</label>
+                        <input type="date" id="paymentDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentCurrency">Para Birimi</label>
+                        <select id="paymentCurrency">
+                            <option value="TL">TL</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="STG">STG</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="paymentDescription">Açıklama</label>
+                        <input type="text" id="paymentDescription">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Company Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="detailModalTitle">Şirket Detayları</h2>
+                <button class="close-btn" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div class="detail-content">
+                <div class="detail-summary" id="detailSummary">
+                    <!-- Summary will be rendered here -->
+                </div>
+                <h3 class="section-title">İşlem Geçmişi</h3>
+                <div class="transaction-list" id="transactionList">
+                    <!-- Transactions will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="supabase-init.js"></script>
+    <script src="src/api/companies.js"></script>
+    <script src="company-panel.js"></script>
+</body>
+
+</html>

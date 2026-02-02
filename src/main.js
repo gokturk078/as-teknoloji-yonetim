@@ -203,7 +203,7 @@ function setupEventListeners() {
     if (btnExport) {
         btnExport.addEventListener('click', () => {
             // Export current view data
-            ExcelManager.exportToExcel(filteredPayments);
+            ExcelManager.exportToExcel(AppState.filteredPayments);
         });
     }
 
